@@ -1,15 +1,15 @@
 import pandas as pd
 import os
+from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CAMINHO = os.path.abspath(os.path.join(BASE_DIR, "..", "data", "produtos.xlsx"))
+
 
 def gerar_proximo_codigo(df):
     if df.empty:
         return 1
     return df["codigo"].max() + 1
-
-
 
 
 def cadastrar_produto():
@@ -39,13 +39,21 @@ def cadastrar_produto():
                 continue
 
             quantidade = int(input("Quantidade: "))
-            validade = input("Validade (YYYY-MM-DD): ")
+
+            # 🔥 VALIDAÇÃO DE DATA BR
+            while True:
+                validade_input = input("Validade (DD/MM/AAAA): ")
+                try:
+                    validade = datetime.strptime(validade_input, "%d/%m/%Y")
+                    break
+                except ValueError:
+                    print("❌ Data inválida! Ex: 25/03/2026")
 
             novo = {
                 "codigo": codigo,
                 "nome": nome,
                 "quantidade": quantidade,
-                "validade": validade
+                "validade": validade.strftime("%Y-%m-%d")  # salva padrão interno
             }
 
             df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
@@ -58,7 +66,7 @@ def cadastrar_produto():
             print("❌ Entrada inválida!")
 def editar_produto():
     try:
-        df = pd.read_excel("produtos.xlsx")
+        df = pd.read_excel(CAMINHO)
     except:
         print("Nenhum produto cadastrado.")
         return
@@ -75,7 +83,9 @@ def editar_produto():
 
     novo_nome = input(f"Nome ({df.loc[index, 'nome']}): ")
     nova_quantidade = input(f"Quantidade ({df.loc[index, 'quantidade']}): ")
-    nova_validade = input(f"Validade ({df.loc[index, 'validade']}): ")
+
+    # 🔥 valida data também na edição
+    nova_validade = input(f"Validade ({df.loc[index, 'validade']} - DD/MM/AAAA): ")
 
     if novo_nome:
         if novo_nome.lower() in df["nome"].astype(str).str.lower().values:
@@ -87,15 +97,21 @@ def editar_produto():
         df.loc[index, "quantidade"] = int(nova_quantidade)
 
     if nova_validade:
-        df.loc[index, "validade"] = nova_validade
+        from datetime import datetime
+        try:
+            validade = datetime.strptime(nova_validade, "%d/%m/%Y")
+            df.loc[index, "validade"] = validade.strftime("%Y-%m-%d")
+        except ValueError:
+            print("❌ Data inválida!")
+            return
 
-    df.to_excel("produtos.xlsx", index=False)
+    df.to_excel(CAMINHO, index=False)
     print("✅ Produto atualizado!")
 
 
 def excluir_produto():
     try:
-        df = pd.read_excel("produtos.xlsx")
+        df = pd.read_excel(CAMINHO)
     except:
         print("Nenhum produto cadastrado.")
         return
@@ -113,6 +129,6 @@ def excluir_produto():
         return
 
     df = df[df["codigo"] != codigo]
-    df.to_excel("produtos.xlsx", index=False)
+    df.to_excel(CAMINHO, index=False)
 
     print("🗑️ Produto excluído!")
